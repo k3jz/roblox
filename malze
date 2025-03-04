@@ -1,3 +1,61 @@
+local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
+local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
+local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
+local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
+local Window = Library:CreateWindow({ Title = '                     $K3JZ$        ', AutoShow = true, TabPadding = 15, MenuFadeTime = 0.2 })
+local Tabs = { Main = Window:AddTab('Main'), Character = Window:AddTab('Character'), Visuals = Window:AddTab('Visuals'), Misc = Window:AddTab('Misc'), Players = Window:AddTab('Players'), ['UI Settings'] = Window:AddTab('UI Settings') }
+local GunMods = Tabs.Main:AddRightGroupbox('Gun Mods')
+local KillAura = Tabs.Main:AddRightGroupbox('Combat')
+
+local MenuGroup = Tabs['UI Settings']:AddLeftGroupbox('Menu')
+
+local LocalPlayer = game:GetService('Players').LocalPlayer
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+
+local lockedTarget = nil
+local StickyAimEnabled = false
+local HighlightEnabled = false
+local TracerEnabled = false
+local ViewTargetEnabled = false
+local targetHitPart = "Head"
+local targetToMouseTracer = true
+local grabCheckEnabled = true
+local koCheckEnabled = true
+local friendCheckEnabled = false
+local strafeEnabled = false
+local strafeMode = "Orbit"
+local strafeSpeed = 5
+local strafeXOffset = 5
+local predictMovementEnabled = false
+local stompTargetEnabled = false
+local lastPosition = nil
+local oldPosition = nil
+local Core = nil
+local BodyVelocity = nil
+local PredicTvalue = 1
+local hiddenBulletsEnabled = false
+local spectateStrafeEnabled = false
+local AutoAmmoEnabled = false
+local strafeWasEnabledBeforeAmmoBuy = false
+
+local tracer = Drawing.new("Line")
+tracer.Visible = false
+tracer.Thickness = 1
+tracer.Color = Color3.fromRGB(255, 255, 255)
+
+
+function predictPosition(targetRoot, predictionMultiplier)
+    if not targetRoot then return targetRoot.Position end
+    if targetRoot.Velocity.Magnitude > 700 then
+        return targetRoot.Position
+    end
+    return targetRoot.Position + (targetRoot.Velocity * predictionMultiplier)
+end
+
 local TargetingGroup = Tabs.Main:AddLeftGroupbox('Targeting')
 
 TargetingGroup:AddToggle("StickyAim", {
