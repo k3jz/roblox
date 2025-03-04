@@ -473,27 +473,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-local killSayEnabled = false
-local killSayMessages = {
-    "k3JZ is a free script and u die to it..", 
-    "Must be hard without k3JZ 💔", 
-    "Why aim when k3JZ does it for you?",
-    "Bros not on k3JZ already 😂",
-    "Cant be me icl",
-    "cant win a hvh? maybe try k3JZ",
-    "if u wanna win hop in k3JZ",
-    "hey come on if u cant win get k3JZ",
-    "how to win a hvh? step 1 get k3JZ"
-}
-
-TargetingGroup:AddToggle("killsay", { 
-    Text = "Kill Say", 
-    Default = false,
-    Callback = function(Value)
-        killSayEnabled = Value
-    end
-})
-
 task.spawn(function()
     while true do
         if stompTargetEnabled and lockedTarget and lockedTarget ~= LocalPlayer then
