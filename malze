@@ -784,3 +784,683 @@ CamLockBox:AddToggle('CamLockToggle', {
         end
     end,
 })
+
+CamLockBox:AddInput('SmoothnessInput', {
+    Default = '0.5',
+    Numeric = true,
+    Finished = false,
+    Text = 'Smoothness',
+    Tooltip = 'Controls how smoothly the camera follows the target (0 = instant)',
+    Placeholder = 'Enter smoothness value...',
+    Callback = function(Value)
+        smoothness = tonumber(Value) or 0.5
+    end
+})
+
+RunService.RenderStepped:Connect(function()
+    if camLockEnabled and camLockTarget then
+        local character = camLockTarget.Character
+        if character then
+            local HRP = character:FindFirstChild("HumanoidRootPart")
+            if HRP then
+                local camera = workspace.CurrentCamera
+                local targetPosition = HRP.Position
+
+                -- Get the current camera CFrame
+                local currentCFrame = camera.CFrame
+
+                -- Calculate the new look direction
+                local lookVector = (targetPosition - currentCFrame.Position).Unit
+
+                -- Smoothly interpolate the look direction
+                local currentLookVector = currentCFrame.LookVector
+                local smoothedLookVector = currentLookVector:Lerp(lookVector, smoothness)
+
+                -- Update the camera's CFrame to face the smoothed direction
+                camera.CFrame = CFrame.new(currentCFrame.Position, currentCFrame.Position + smoothedLookVector)
+            end
+        end
+    end
+end)
+
+getgenv().range = 250
+
+getgenv().whitelist = {}
+
+
+getgenv().tracer = Instance.new("Part")
+getgenv().tracer.Size = Vector3.new(0.2, 0.2, 0.2)
+getgenv().tracer.Material = Enum.Material.Neon
+getgenv().tracer.Color = Color3.new(1, 0, 0)
+getgenv().tracer.Transparency = 1
+getgenv().tracer.Anchored = true
+getgenv().tracer.CanCollide = false
+getgenv().tracer.Parent = workspace
+
+getgenv().enabled = false
+getgenv().active = false
+getgenv().visualizeEnabled = false
+getgenv().silentEnabled = false
+getgenv().lastHealth = {}
+
+KillAura:AddToggle('MainToggle', {
+    Text = 'Kill Aura',
+    Default = false,
+    Callback = function(state)
+        getgenv().enabled = state
+        if not state then
+            getgenv().active = false
+            getgenv().tracer.Transparency = 1
+        end
+    end
+}):AddKeyPicker('Keybind', {
+    Default = 'K',
+    Text = 'kill aura',
+    Mode = 'Toggle',
+    Callback = function(state)
+        if not getgenv().enabled or UserInputService:GetFocusedTextBox() then return end
+        getgenv().active = state
+    end
+})
+
+KillAura:AddSlider("Range", {
+    Text = "Range",
+    Default = 250,
+    Min = 10,
+    Max = 250,
+    Rounding = 1,
+    Callback = function(value)
+        getgenv().range = value
+    end
+})
+
+KillAura:AddToggle('Visualizer', {
+    Text = 'Visualize',
+    Default = false,
+    Callback = function(state)
+        getgenv().visualizeEnabled = state
+    end
+}):AddColorPicker('VisualizerColor', {
+    Text = 'Visualizer Color',
+    Default = Color3.new(1, 0, 0),
+    Callback = function(value)
+        getgenv().tracer.Color = value
+    end
+})
+
+KillAura:AddToggle('Silent', {
+    Text = 'Silent',
+    Default = false,
+    Callback = function(state)
+        getgenv().silentEnabled = state
+    end
+})
+
+KillAura:AddInput('wlb', {
+    Default = '',
+    Numeric = false,
+    Finished = false,
+    Text = 'Add/Remove Player',
+    Tooltip = 'Type a name or display name to add/remove from whitelist',
+    Placeholder = 'Player Name',
+    Callback = function(input)
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player.Name == input or player.DisplayName == input then
+                if getgenv().whitelist[player.Name] then
+                    getgenv().whitelist[player.Name] = nil
+                    Library:Notify(player.Name .. " removed from whitelist.", 2)
+                else
+                    getgenv().whitelist[player.Name] = true
+                    Library:Notify(player.Name .. " added to whitelist.", 2)
+                end
+                return
+            end
+        end
+        Library:Notify("Player not found.", 2)
+    end,
+    Autocomplete = function(input)
+        local suggestions = {}
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if string.find(string.lower(player.Name), string.lower(input)) or string.find(string.lower(player.DisplayName), string.lower(input)) then
+                table.insert(suggestions, player.Name .. " (" .. player.DisplayName .. ")")
+            end
+        end
+        return suggestions
+    end
+})
+
+
+
+task.spawn(function()
+    while true do
+        if getgenv().active and getgenv().enabled and game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool") and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("Handle") then
+            if workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(game.Players.LocalPlayer.Name) and workspace.Players:FindFirstChild(game.Players.LocalPlayer.Name):FindFirstChild("BodyEffects") and workspace.Players:FindFirstChild(game.Players.LocalPlayer.Name).BodyEffects:FindFirstChild("K.O") and workspace.Players:FindFirstChild(game.Players.LocalPlayer.Name).BodyEffects["K.O"].Value then
+                task.wait()
+            else
+                local closest = math.huge
+                target = nil
+
+                for _, player in pairs(game.Players:GetPlayers()) do
+                    if player ~= game.Players.LocalPlayer and not getgenv().whitelist[player.Name] and player.Character and player.Character:FindFirstChild("Head") and not player.Character:FindFirstChild("GRABBING_CONSTRAINT") then
+                        if workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(player.Name) and workspace.Players:FindFirstChild(player.Name):FindFirstChild("BodyEffects") and workspace.Players:FindFirstChild(player.Name).BodyEffects:FindFirstChild("K.O") and not workspace.Players:FindFirstChild(player.Name).BodyEffects["K.O"].Value then
+                            local dist = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - player.Character.Head.Position).Magnitude
+                            if dist < closest and dist <= getgenv().range then
+                                closest = dist
+                                target = player
+                            end
+                        end
+                    end
+                end
+
+                if target and target.Character and target.Character:FindFirstChild("Head") then
+                    if getgenv().visualizeEnabled then
+                        getgenv().tracer.Transparency = 0
+                        getgenv().tracer.Size = Vector3.new(0.2, 0.2, (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - target.Character.Head.Position).Magnitude)
+                        getgenv().tracer.CFrame = CFrame.lookAt(game.Players.LocalPlayer.Character.HumanoidRootPart.Position, target.Character.Head.Position) * CFrame.new(0, 0, -getgenv().tracer.Size.Z / 2)
+                    else
+                        getgenv().tracer.Transparency = 1
+                    end
+
+                    local humanoid = target.Character:FindFirstChild("Humanoid")
+                    if humanoid then
+                        if not getgenv().lastHealth[target.Name] then
+                            getgenv().lastHealth[target.Name] = humanoid.Health
+                        end
+                        if humanoid.Health < getgenv().lastHealth[target.Name] then
+                            playHitsound()
+                        end
+                        getgenv().lastHealth[target.Name] = humanoid.Health
+                    end
+
+                    if getgenv().silentEnabled then
+                        game.ReplicatedStorage.MainEvent:FireServer(
+                            "ShootGun",
+                            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("Handle"),
+                            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("Handle").CFrame.Position - Vector3.new(0, 12, 0),
+                            target.Character.Head.Position - Vector3.new(0, 12, 0),
+                            target.Character.Head,
+                            Vector3.new(0, 0, -1)
+                    )
+                    else
+                        game.ReplicatedStorage.MainEvent:FireServer("ShootGun", game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("Handle"), game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("Handle").CFrame.Position, target.Character.Head.Position, target.Character.Head, Vector3.new(0, 0, -1))
+                    end
+                else
+                    getgenv().tracer.Transparency = 1
+                end
+            end
+        else
+            getgenv().tracer.Transparency = 1
+        end
+        task.wait()
+    end
+end)
+
+-- Configuration
+getgenv().espEnabled = false
+getgenv().espColor = Color3.new(1, 1, 1)
+getgenv().nameESPEnabled = false
+getgenv().nameColor = Color3.new(1, 1, 1) -- New: Name ESP color
+getgenv().nameDisplayMode = "Username"
+getgenv().nameTextSize = 14
+getgenv().studsESPEnabled = false
+getgenv().distanceColor = Color3.new(1, 1, 1)
+getgenv().distanceTextSize = 14
+getgenv().healthBarESP = false
+getgenv().healthBarColor = Color3.new(0, 1, 0) -- New: Health bar color
+getgenv().weaponESPEnabled = false
+getgenv().weaponColor = Color3.new(1, 1, 1) -- New: Weapon ESP color
+getgenv().armorBarESP = false
+getgenv().armorBarColor = Color3.new(0, 0, 1) -- New: Armor bar color
+getgenv().outlineEnabled = false
+getgenv().penisESPEnabled = false
+getgenv().penisColor = Color3.new(1, 0, 0) -- New: Penis ESP color
+
+-- Font mapping
+local fontMap = {
+    ["SourceSans"] = 0
+}
+
+-- ESP Objects storage
+local ESPObjects = {}
+
+-- Get the game's camera
+local Camera = workspace.CurrentCamera
+
+-- Function to destroy ESP for a player
+local function DestroyESP(player)
+    if ESPObjects[player] then
+        for _, obj in pairs(ESPObjects[player]) do
+            obj:Remove()
+        end
+        ESPObjects[player] = nil
+    end
+end
+
+-- Function to create ESP for a player
+local function CreateESP(player)
+    DestroyESP(player)
+
+    local box = Drawing.new("Square")
+    box.Thickness = 1
+    box.Filled = false
+    box.Color = getgenv().espColor
+    box.Visible = false
+    box.ZIndex = 1
+
+    local boxOutline = Drawing.new("Square")
+    boxOutline.Thickness = 3
+    boxOutline.Filled = false
+    boxOutline.Color = Color3.new(0, 0, 0)
+    boxOutline.Visible = false
+    boxOutline.ZIndex = 0
+
+    local username = Drawing.new("Text")
+    username.Size = getgenv().nameTextSize
+    username.Center = true
+    username.Color = getgenv().nameColor
+    username.Visible = false
+    username.Font = fontMap["SourceSans"]
+    username.Outline = getgenv().outlineEnabled
+    username.OutlineColor = Color3.new(0, 0, 0)
+
+    local distance = Drawing.new("Text")
+    distance.Size = getgenv().distanceTextSize
+    distance.Center = true
+    distance.Color = getgenv().distanceColor
+    distance.Visible = false
+    distance.Font = fontMap["SourceSans"]
+    distance.Outline = getgenv().outlineEnabled
+    distance.OutlineColor = Color3.new(0, 0, 0)
+
+    local healthBar = Drawing.new("Square")
+    healthBar.Thickness = 1
+    healthBar.Filled = true
+    healthBar.Color = getgenv().healthBarColor
+    healthBar.Visible = false
+    healthBar.ZIndex = 1
+
+    local healthBarOutline = Drawing.new("Square")
+    healthBarOutline.Thickness = 3
+    healthBarOutline.Filled = false
+    healthBarOutline.Color = Color3.new(0, 0, 0)
+    healthBarOutline.Visible = false
+    healthBarOutline.ZIndex = 0
+
+    local weapon = Drawing.new("Text")
+    weapon.Size = getgenv().nameTextSize
+    weapon.Center = true
+    weapon.Color = getgenv().weaponColor
+    weapon.Visible = false
+    weapon.Font = fontMap["SourceSans"]
+    weapon.Outline = getgenv().outlineEnabled
+    weapon.OutlineColor = Color3.new(0, 0, 0)
+
+    local armorBar = Drawing.new("Square")
+    armorBar.Thickness = 1
+    armorBar.Filled = true
+    armorBar.Color = getgenv().armorBarColor
+    armorBar.Visible = false
+    armorBar.ZIndex = 1
+
+    local armorBarOutline = Drawing.new("Square")
+    armorBarOutline.Thickness = 3
+    armorBarOutline.Filled = false
+    armorBarOutline.Color = Color3.new(0, 0, 0)
+    armorBarOutline.Visible = false
+    armorBarOutline.ZIndex = 0
+
+    local penisLine = Drawing.new("Line")
+    penisLine.Thickness = 2
+    penisLine.Color = getgenv().penisColor
+    penisLine.Visible = false
+    penisLine.ZIndex = 1
+
+    ESPObjects[player] = {
+        Box = box,
+        BoxOutline = boxOutline,
+        Username = username,
+        Distance = distance,
+        HealthBar = healthBar,
+        HealthBarOutline = healthBarOutline,
+        Weapon = weapon,
+        ArmorBar = armorBar,
+        ArmorBarOutline = armorBarOutline,
+        PenisLine = penisLine
+    }
+end
+
+-- Function to update ESP
+local function UpdateESP()
+    for player, objects in pairs(ESPObjects) do
+        local character = player.Character
+        if character and character:FindFirstChild("HumanoidRootPart") and player ~= LocalPlayer and getgenv().espEnabled then
+            local rootPart = character.HumanoidRootPart
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+            if humanoid and humanoid.Health > 0 then
+                local rootPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+                local headPosition = Camera:WorldToViewportPoint(rootPart.Position + Vector3.new(0, 3, 0))
+                local footPosition = Camera:WorldToViewportPoint(rootPart.Position - Vector3.new(0, 3, 0))
+
+                if onScreen then
+                    local boxHeight = math.abs(headPosition.Y - footPosition.Y)
+                    local boxWidth = boxHeight / 2
+
+                    -- Box ESP
+                    objects.Box.Position = Vector2.new(rootPosition.X - boxWidth / 2, headPosition.Y)
+                    objects.Box.Size = Vector2.new(boxWidth, boxHeight)
+                    objects.Box.Color = getgenv().espColor
+                    objects.Box.Visible = true
+
+                    -- Box Outline
+                    objects.BoxOutline.Position = Vector2.new(rootPosition.X - boxWidth / 2, headPosition.Y)
+                    objects.BoxOutline.Size = Vector2.new(boxWidth, boxHeight)
+                    objects.BoxOutline.Visible = getgenv().outlineEnabled
+
+                    -- Name ESP (Above the box)
+                    if getgenv().nameESPEnabled then
+                        local displayName
+                        if getgenv().nameDisplayMode == "Username" then
+                            displayName = player.Name
+                        elseif getgenv().nameDisplayMode == "DisplayName" then
+                            displayName = player.DisplayName
+                        elseif getgenv().nameDisplayMode == "Username (DisplayName)" then
+                            displayName = player.Name .. " (" .. player.DisplayName .. ")"
+                        elseif getgenv().nameDisplayMode == "Username (DisplayName) [UserID]" then
+                            displayName = player.Name .. " (" .. player.DisplayName .. ") [" .. player.UserId .. "]"
+                        end
+
+                        objects.Username.Position = Vector2.new(rootPosition.X, headPosition.Y - 15) -- Adjusted position
+                        objects.Username.Text = displayName
+                        objects.Username.Size = getgenv().nameTextSize
+                        objects.Username.Font = fontMap["SourceSans"]
+                        objects.Username.Visible = true
+                        objects.Username.Color = getgenv().nameColor
+                        objects.Username.Outline = getgenv().outlineEnabled
+                    else
+                        objects.Username.Visible = false
+                    end
+
+                    -- Distance ESP (Below the box)
+                    if getgenv().studsESPEnabled then
+                        local distanceText = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - rootPart.Position).Magnitude) .. " studs"
+                        objects.Distance.Position = Vector2.new(rootPosition.X, footPosition.Y + 5)
+                        objects.Distance.Text = distanceText
+                        objects.Distance.Size = getgenv().distanceTextSize
+                        objects.Distance.Font = fontMap["SourceSans"]
+                        objects.Distance.Visible = true
+                        objects.Distance.Color = getgenv().distanceColor
+                        objects.Distance.Outline = getgenv().outlineEnabled
+                    else
+                        objects.Distance.Visible = false
+                    end
+
+                    -- Health Bar ESP
+                    if getgenv().healthBarESP then
+                        local healthRatio = humanoid.Health / humanoid.MaxHealth
+                        local barHeight = boxHeight * healthRatio
+                        objects.HealthBar.Position = Vector2.new(rootPosition.X - boxWidth / 2 - 6, headPosition.Y + (boxHeight - barHeight))
+                        objects.HealthBar.Size = Vector2.new(3, barHeight)
+                        objects.HealthBar.Color = getgenv().healthBarColor
+                        objects.HealthBar.Visible = true
+
+                        -- Health Bar Outline
+                        objects.HealthBarOutline.Position = Vector2.new(rootPosition.X - boxWidth / 2 - 6, headPosition.Y + (boxHeight - barHeight))
+                        objects.HealthBarOutline.Size = Vector2.new(3, barHeight)
+                        objects.HealthBarOutline.Visible = getgenv().outlineEnabled
+                    else
+                        objects.HealthBar.Visible = false
+                        objects.HealthBarOutline.Visible = false
+                    end
+
+                    -- Weapon ESP
+                    if getgenv().weaponESPEnabled then
+                        local tool = character:FindFirstChildOfClass("Tool")
+                        if tool then
+                            objects.Weapon.Position = Vector2.new(rootPosition.X, footPosition.Y + 20)
+                            objects.Weapon.Text = "" .. tool.Name .. ""
+                            objects.Weapon.Size = getgenv().nameTextSize
+                            objects.Weapon.Font = fontMap["SourceSans"]
+                            objects.Weapon.Visible = true
+                            objects.Weapon.Color = getgenv().weaponColor
+                            objects.Weapon.Outline = getgenv().outlineEnabled
+                        else
+                            objects.Weapon.Visible = false
+                        end
+                    else
+                        objects.Weapon.Visible = false
+                    end
+
+                    -- Armor Bar ESP
+                    if getgenv().armorBarESP then
+                        local dataFolder = player:FindFirstChild("DataFolder")
+                        if dataFolder then
+                            local information = dataFolder:FindFirstChild("Information")
+                            if information then
+                                local armorSave = information:FindFirstChild("ArmorSave")
+                                if armorSave then
+                                    local armorRatio = armorSave.Value / 130 -- Assuming max armor is 100
+                                    local armorHeight = boxHeight * armorRatio
+                                    objects.ArmorBar.Position = Vector2.new(rootPosition.X + boxWidth / 2 + 3, headPosition.Y + (boxHeight - armorHeight))
+                                    objects.ArmorBar.Size = Vector2.new(3, armorHeight)
+                                    objects.ArmorBar.Color = getgenv().armorBarColor
+                                    objects.ArmorBar.Visible = true
+
+                                    -- Armor Bar Outline
+                                    objects.ArmorBarOutline.Position = Vector2.new(rootPosition.X + boxWidth / 2 + 3, headPosition.Y + (boxHeight - armorHeight))
+                                    objects.ArmorBarOutline.Size = Vector2.new(3, armorHeight)
+                                    objects.ArmorBarOutline.Visible = getgenv().outlineEnabled
+                                else
+                                    objects.ArmorBar.Visible = false
+                                    objects.ArmorBarOutline.Visible = false
+                                end
+                            else
+                                objects.ArmorBar.Visible = false
+                                objects.ArmorBarOutline.Visible = false
+                            end
+                        else
+                            objects.ArmorBar.Visible = false
+                            objects.ArmorBarOutline.Visible = false
+                        end
+                    else
+                        objects.ArmorBar.Visible = false
+                        objects.ArmorBarOutline.Visible = false
+                    end
+
+                    -- Penis ESP
+                    if getgenv().penisESPEnabled then
+                        local pelvis = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
+                        if pelvis then
+                            local pelvisPosition = Camera:WorldToViewportPoint(pelvis.Position)
+                            local lookVector = rootPart.CFrame.LookVector
+                            local penisEndPosition = Camera:WorldToViewportPoint(pelvis.Position + lookVector * 2) -- Adjust length as needed
+
+                            objects.PenisLine.From = Vector2.new(pelvisPosition.X, pelvisPosition.Y)
+                            objects.PenisLine.To = Vector2.new(penisEndPosition.X, penisEndPosition.Y)
+                            objects.PenisLine.Color = getgenv().penisColor
+                            objects.PenisLine.Visible = true
+                        else
+                            objects.PenisLine.Visible = false
+                        end
+                    else
+                        objects.PenisLine.Visible = false
+                    end
+                else
+                    -- Hide all ESP elements if off-screen
+                    objects.Box.Visible = false
+                    objects.BoxOutline.Visible = false
+                    objects.Username.Visible = false
+                    objects.Distance.Visible = false
+                    objects.HealthBar.Visible = false
+                    objects.HealthBarOutline.Visible = false
+                    objects.Weapon.Visible = false
+                    objects.ArmorBar.Visible = false
+                    objects.ArmorBarOutline.Visible = false
+                    objects.PenisLine.Visible = false
+                end
+            end
+        end
+    end
+end
+
+-- Function to apply ESP settings
+function applyESP()
+    for _, objects in pairs(ESPObjects) do
+        objects.Box.Visible = getgenv().espEnabled
+        objects.BoxOutline.Visible = getgenv().outlineEnabled and getgenv().espEnabled
+    end
+end
+
+-- Player Added/Removed Events
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        wait(1)
+        CreateESP(player)
+    end)
+end)
+
+Players.PlayerRemoving:Connect(DestroyESP)
+
+-- Initialize ESP for existing players
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        CreateESP(player)
+    end
+end
+
+-- Update ESP on every frame
+RunService.RenderStepped:Connect(UpdateESP)
+
+-- UI for ESP Settings
+local espUI = Tabs.Visuals:AddLeftGroupbox('ESP')
+
+espUI:AddToggle("ESPEnabled", {
+    Text = "Enable",
+    Default = false,
+    Callback = function(value)
+        getgenv().espEnabled = value
+        applyESP()
+    end
+}):AddColorPicker("ESPColor", {
+    Text = "ESP Color",
+    Default = getgenv().espColor,
+    Callback = function(value)
+        getgenv().espColor = value
+        applyESP()
+    end
+})
+
+espUI:AddToggle("name", {
+    Text = "Names",
+    Default = false,
+    Callback = function(value)
+        getgenv().nameESPEnabled = value
+        applyESP()
+    end
+}):AddColorPicker("NameColor", {
+    Text = "Name Color",
+    Default = getgenv().nameColor,
+    Callback = function(value)
+        getgenv().nameColor = value
+        applyESP()
+    end
+})
+
+espUI:AddDropdown("NameDisplayMode", {
+    Text = "Name Mode",
+    Values = {"Username", "DisplayName", "Username (DisplayName)", "Username (DisplayName) [UserID]"},
+    Default = "Username",
+    Callback = function(value)
+        getgenv().nameDisplayMode = value
+        applyESP()
+    end
+})
+
+espUI:AddToggle("HealthBarESP", {
+    Text = "Health Bar",
+    Default = false,
+    Callback = function(value)
+        getgenv().healthBarESP = value
+        applyESP()
+    end
+}):AddColorPicker("HealthBarColor", {
+    Text = "Health Bar Color",
+    Default = getgenv().healthBarColor,
+    Callback = function(value)
+        getgenv().healthBarColor = value
+        applyESP()
+    end
+})
+
+espUI:AddToggle("StudsESPEnabled", {
+    Text = "Distance",
+    Default = false,
+    Callback = function(value)
+        getgenv().studsESPEnabled = value
+        applyESP()
+    end
+}):AddColorPicker("DistanceColor", {
+    Text = "Distance Color",
+    Default = getgenv().distanceColor,
+    Callback = function(value)
+        getgenv().distanceColor = value
+        applyESP()
+    end
+})
+
+espUI:AddToggle("WeaponESPEnabled", {
+    Text = "Weapon ESP",
+    Default = false,
+    Callback = function(value)
+        getgenv().weaponESPEnabled = value
+        applyESP()
+    end
+}):AddColorPicker("WeaponColor", {
+    Text = "Weapon Color",
+    Default = getgenv().weaponColor,
+    Callback = function(value)
+        getgenv().weaponColor = value
+        applyESP()
+    end
+})
+
+espUI:AddToggle("ArmorBarESP", {
+    Text = "Armor Bar",
+    Default = false,
+    Callback = function(value)
+        getgenv().armorBarESP = value
+        applyESP()
+    end
+}):AddColorPicker("ArmorBarColor", {
+    Text = "Armor Bar Color",
+    Default = getgenv().armorBarColor,
+    Callback = function(value)
+        getgenv().armorBarColor = value
+        applyESP()
+    end
+})
+
+espUI:AddToggle("OutlineEnabled", {
+    Text = "Outline",
+    Default = false,
+    Callback = function(value)
+        getgenv().outlineEnabled = value
+        applyESP()
+    end
+})
+
+espUI:AddToggle("PenisESPEnabled", {
+    Text = "Penis ESP",
+    Default = false,
+    Callback = function(value)
+        getgenv().penisESPEnabled = value
+        applyESP()
+    end
+}):AddColorPicker("PenisColor", {
+    Text = "Penis Color",
+    Default = getgenv().penisColor,
+    Callback = function(value)
+        getgenv().penisColor = value
+        applyESP()
+    end
+})
