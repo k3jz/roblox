@@ -1217,952 +1217,281 @@ task.spawn(function()
     end
 end)
 
--- Configuration
-getgenv().espEnabled = false
-getgenv().espColor = Color3.new(1, 1, 1)
-getgenv().nameESPEnabled = false
-getgenv().nameColor = Color3.new(1, 1, 1) -- New: Name ESP color
-getgenv().nameDisplayMode = "Username"
-getgenv().nameTextSize = 14
-getgenv().studsESPEnabled = false
-getgenv().distanceColor = Color3.new(1, 1, 1)
-getgenv().distanceTextSize = 14
-getgenv().healthBarESP = false
-getgenv().healthBarColor = Color3.new(0, 1, 0) -- New: Health bar color
-getgenv().weaponESPEnabled = false
-getgenv().weaponColor = Color3.new(1, 1, 1) -- New: Weapon ESP color
-getgenv().armorBarESP = false
-getgenv().armorBarColor = Color3.new(0, 0, 1) -- New: Armor bar color
-getgenv().outlineEnabled = false
-getgenv().penisESPEnabled = false
-getgenv().penisColor = Color3.new(1, 0, 0) -- New: Penis ESP color
+LeftGroupBox = Tabs.Visuals:AddLeftGroupbox('Cham Esp')
 
--- Font mapping
-local fontMap = {
-    ["SourceSans"] = 0
-}
+-- The actual cham effect
+Players = game:GetService("Players")
+RunService = game:GetService("RunService")
+LocalPlayer = Players.LocalPlayer
+highlightColor = Color3.fromRGB(255, 255, 255)  -- Default color for chams
 
--- ESP Objects storage
-local ESPObjects = {}
+-- Function to create a cham (highlight) effect for a player
+function CreateCham(player)
+    local character = player.Character or player.CharacterAdded:Wait()
+    if not character:FindFirstChild("HumanoidRootPart") then return end
 
--- Get the game's camera
-local Camera = workspace.CurrentCamera
+    -- Create the highlight object for the player's character
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ChamHighlight"
+    highlight.Parent = character
+    highlight.Adornee = character  -- Set the highlight target to the entire character
+    highlight.FillColor = highlightColor  -- Set color to chosen value
+    highlight.FillTransparency = 0.5  -- Make the highlight semi-transparent
+    highlight.OutlineTransparency = 1  -- Fully transparent outline (no outline)
 
--- Function to destroy ESP for a player
-local function DestroyESP(player)
-    if ESPObjects[player] then
-        for _, obj in pairs(ESPObjects[player]) do
-            obj:Remove()
-        end
-        ESPObjects[player] = nil
-    end
+    -- Clean up when the character is removed
+    character:WaitForChild("HumanoidRootPart").AncestryChanged:Connect(function()
+        highlight:Destroy()  -- Remove the highlight when the player leaves or the character is destroyed
+    end)
 end
 
--- Function to create ESP for a player
-local function CreateESP(player)
-    DestroyESP(player)
+-- UI Toggle for Chams
+LeftGroupBox:AddToggle('ChamsToggle', {
+    Text = 'Chams',
+    Default = false, -- Default value (true / false)
+    Tooltip = 'Toggles cham effect for players',
 
-    local box = Drawing.new("Square")
-    box.Thickness = 1
-    box.Filled = false
-    box.Color = getgenv().espColor
-    box.Visible = false
-    box.ZIndex = 1
-
-    local boxOutline = Drawing.new("Square")
-    boxOutline.Thickness = 3
-    boxOutline.Filled = false
-    boxOutline.Color = Color3.new(0, 0, 0)
-    boxOutline.Visible = false
-    boxOutline.ZIndex = 0
-
-    local username = Drawing.new("Text")
-    username.Size = getgenv().nameTextSize
-    username.Center = true
-    username.Color = getgenv().nameColor
-    username.Visible = false
-    username.Font = fontMap["SourceSans"]
-    username.Outline = getgenv().outlineEnabled
-    username.OutlineColor = Color3.new(0, 0, 0)
-
-    local distance = Drawing.new("Text")
-    distance.Size = getgenv().distanceTextSize
-    distance.Center = true
-    distance.Color = getgenv().distanceColor
-    distance.Visible = false
-    distance.Font = fontMap["SourceSans"]
-    distance.Outline = getgenv().outlineEnabled
-    distance.OutlineColor = Color3.new(0, 0, 0)
-
-    local healthBar = Drawing.new("Square")
-    healthBar.Thickness = 1
-    healthBar.Filled = true
-    healthBar.Color = getgenv().healthBarColor
-    healthBar.Visible = false
-    healthBar.ZIndex = 1
-
-    local healthBarOutline = Drawing.new("Square")
-    healthBarOutline.Thickness = 3
-    healthBarOutline.Filled = false
-    healthBarOutline.Color = Color3.new(0, 0, 0)
-    healthBarOutline.Visible = false
-    healthBarOutline.ZIndex = 0
-
-    local weapon = Drawing.new("Text")
-    weapon.Size = getgenv().nameTextSize
-    weapon.Center = true
-    weapon.Color = getgenv().weaponColor
-    weapon.Visible = false
-    weapon.Font = fontMap["SourceSans"]
-    weapon.Outline = getgenv().outlineEnabled
-    weapon.OutlineColor = Color3.new(0, 0, 0)
-
-    local armorBar = Drawing.new("Square")
-    armorBar.Thickness = 1
-    armorBar.Filled = true
-    armorBar.Color = getgenv().armorBarColor
-    armorBar.Visible = false
-    armorBar.ZIndex = 1
-
-    local armorBarOutline = Drawing.new("Square")
-    armorBarOutline.Thickness = 3
-    armorBarOutline.Filled = false
-    armorBarOutline.Color = Color3.new(0, 0, 0)
-    armorBarOutline.Visible = false
-    armorBarOutline.ZIndex = 0
-
-    local penisLine = Drawing.new("Line")
-    penisLine.Thickness = 2
-    penisLine.Color = getgenv().penisColor
-    penisLine.Visible = false
-    penisLine.ZIndex = 1
-
-    ESPObjects[player] = {
-        Box = box,
-        BoxOutline = boxOutline,
-        Username = username,
-        Distance = distance,
-        HealthBar = healthBar,
-        HealthBarOutline = healthBarOutline,
-        Weapon = weapon,
-        ArmorBar = armorBar,
-        ArmorBarOutline = armorBarOutline,
-        PenisLine = penisLine
-    }
-end
-
--- Function to update ESP
-local function UpdateESP()
-    for player, objects in pairs(ESPObjects) do
-        local character = player.Character
-        if character and character:FindFirstChild("HumanoidRootPart") and player ~= LocalPlayer and getgenv().espEnabled then
-            local rootPart = character.HumanoidRootPart
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-
-            if humanoid and humanoid.Health > 0 then
-                local rootPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
-                local headPosition = Camera:WorldToViewportPoint(rootPart.Position + Vector3.new(0, 3, 0))
-                local footPosition = Camera:WorldToViewportPoint(rootPart.Position - Vector3.new(0, 3, 0))
-
-                if onScreen then
-                    local boxHeight = math.abs(headPosition.Y - footPosition.Y)
-                    local boxWidth = boxHeight / 2
-
-                    -- Box ESP
-                    objects.Box.Position = Vector2.new(rootPosition.X - boxWidth / 2, headPosition.Y)
-                    objects.Box.Size = Vector2.new(boxWidth, boxHeight)
-                    objects.Box.Color = getgenv().espColor
-                    objects.Box.Visible = true
-
-                    -- Box Outline
-                    objects.BoxOutline.Position = Vector2.new(rootPosition.X - boxWidth / 2, headPosition.Y)
-                    objects.BoxOutline.Size = Vector2.new(boxWidth, boxHeight)
-                    objects.BoxOutline.Visible = getgenv().outlineEnabled
-
-                    -- Name ESP (Above the box)
-                    if getgenv().nameESPEnabled then
-                        local displayName
-                        if getgenv().nameDisplayMode == "Username" then
-                            displayName = player.Name
-                        elseif getgenv().nameDisplayMode == "DisplayName" then
-                            displayName = player.DisplayName
-                        elseif getgenv().nameDisplayMode == "Username (DisplayName)" then
-                            displayName = player.Name .. " (" .. player.DisplayName .. ")"
-                        elseif getgenv().nameDisplayMode == "Username (DisplayName) [UserID]" then
-                            displayName = player.Name .. " (" .. player.DisplayName .. ") [" .. player.UserId .. "]"
-                        end
-
-                        objects.Username.Position = Vector2.new(rootPosition.X, headPosition.Y - 15) -- Adjusted position
-                        objects.Username.Text = displayName
-                        objects.Username.Size = getgenv().nameTextSize
-                        objects.Username.Font = fontMap["SourceSans"]
-                        objects.Username.Visible = true
-                        objects.Username.Color = getgenv().nameColor
-                        objects.Username.Outline = getgenv().outlineEnabled
-                    else
-                        objects.Username.Visible = false
+    Callback = function(Value)
+        _G.chams = Value
+        -- Apply or remove the cham effect based on the toggle state
+        if _G.chams then
+            -- Apply cham effect for players when enabled
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    CreateCham(player)
+                end
+            end
+        else
+            -- Remove cham effect for players when disabled
+            for _, player in pairs(Players:GetPlayers()) do
+                local character = player.Character
+                if character then
+                    local highlight = character:FindFirstChild("ChamHighlight")
+                    if highlight then
+                        highlight:Destroy()
                     end
-
-                    -- Distance ESP (Below the box)
-                    if getgenv().studsESPEnabled then
-                        local distanceText = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - rootPart.Position).Magnitude) .. " studs"
-                        objects.Distance.Position = Vector2.new(rootPosition.X, footPosition.Y + 5)
-                        objects.Distance.Text = distanceText
-                        objects.Distance.Size = getgenv().distanceTextSize
-                        objects.Distance.Font = fontMap["SourceSans"]
-                        objects.Distance.Visible = true
-                        objects.Distance.Color = getgenv().distanceColor
-                        objects.Distance.Outline = getgenv().outlineEnabled
-                    else
-                        objects.Distance.Visible = false
-                    end
-
-                    -- Health Bar ESP
-                    if getgenv().healthBarESP then
-                        local healthRatio = humanoid.Health / humanoid.MaxHealth
-                        local barHeight = boxHeight * healthRatio
-                        objects.HealthBar.Position = Vector2.new(rootPosition.X - boxWidth / 2 - 6, headPosition.Y + (boxHeight - barHeight))
-                        objects.HealthBar.Size = Vector2.new(3, barHeight)
-                        objects.HealthBar.Color = getgenv().healthBarColor
-                        objects.HealthBar.Visible = true
-
-                        -- Health Bar Outline
-                        objects.HealthBarOutline.Position = Vector2.new(rootPosition.X - boxWidth / 2 - 6, headPosition.Y + (boxHeight - barHeight))
-                        objects.HealthBarOutline.Size = Vector2.new(3, barHeight)
-                        objects.HealthBarOutline.Visible = getgenv().outlineEnabled
-                    else
-                        objects.HealthBar.Visible = false
-                        objects.HealthBarOutline.Visible = false
-                    end
-
-                    -- Weapon ESP
-                    if getgenv().weaponESPEnabled then
-                        local tool = character:FindFirstChildOfClass("Tool")
-                        if tool then
-                            objects.Weapon.Position = Vector2.new(rootPosition.X, footPosition.Y + 20)
-                            objects.Weapon.Text = "" .. tool.Name .. ""
-                            objects.Weapon.Size = getgenv().nameTextSize
-                            objects.Weapon.Font = fontMap["SourceSans"]
-                            objects.Weapon.Visible = true
-                            objects.Weapon.Color = getgenv().weaponColor
-                            objects.Weapon.Outline = getgenv().outlineEnabled
-                        else
-                            objects.Weapon.Visible = false
-                        end
-                    else
-                        objects.Weapon.Visible = false
-                    end
-
-                    -- Armor Bar ESP
-                    if getgenv().armorBarESP then
-                        local dataFolder = player:FindFirstChild("DataFolder")
-                        if dataFolder then
-                            local information = dataFolder:FindFirstChild("Information")
-                            if information then
-                                local armorSave = information:FindFirstChild("ArmorSave")
-                                if armorSave then
-                                    local armorRatio = armorSave.Value / 130 -- Assuming max armor is 100
-                                    local armorHeight = boxHeight * armorRatio
-                                    objects.ArmorBar.Position = Vector2.new(rootPosition.X + boxWidth / 2 + 3, headPosition.Y + (boxHeight - armorHeight))
-                                    objects.ArmorBar.Size = Vector2.new(3, armorHeight)
-                                    objects.ArmorBar.Color = getgenv().armorBarColor
-                                    objects.ArmorBar.Visible = true
-
-                                    -- Armor Bar Outline
-                                    objects.ArmorBarOutline.Position = Vector2.new(rootPosition.X + boxWidth / 2 + 3, headPosition.Y + (boxHeight - armorHeight))
-                                    objects.ArmorBarOutline.Size = Vector2.new(3, armorHeight)
-                                    objects.ArmorBarOutline.Visible = getgenv().outlineEnabled
-                                else
-                                    objects.ArmorBar.Visible = false
-                                    objects.ArmorBarOutline.Visible = false
-                                end
-                            else
-                                objects.ArmorBar.Visible = false
-                                objects.ArmorBarOutline.Visible = false
-                            end
-                        else
-                            objects.ArmorBar.Visible = false
-                            objects.ArmorBarOutline.Visible = false
-                        end
-                    else
-                        objects.ArmorBar.Visible = false
-                        objects.ArmorBarOutline.Visible = false
-                    end
-
-                    -- Penis ESP
-                    if getgenv().penisESPEnabled then
-                        local pelvis = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
-                        if pelvis then
-                            local pelvisPosition = Camera:WorldToViewportPoint(pelvis.Position)
-                            local lookVector = rootPart.CFrame.LookVector
-                            local penisEndPosition = Camera:WorldToViewportPoint(pelvis.Position + lookVector * 2) -- Adjust length as needed
-
-                            objects.PenisLine.From = Vector2.new(pelvisPosition.X, pelvisPosition.Y)
-                            objects.PenisLine.To = Vector2.new(penisEndPosition.X, penisEndPosition.Y)
-                            objects.PenisLine.Color = getgenv().penisColor
-                            objects.PenisLine.Visible = true
-                        else
-                            objects.PenisLine.Visible = false
-                        end
-                    else
-                        objects.PenisLine.Visible = false
-                    end
-                else
-                    -- Hide all ESP elements if off-screen
-                    objects.Box.Visible = false
-                    objects.BoxOutline.Visible = false
-                    objects.Username.Visible = false
-                    objects.Distance.Visible = false
-                    objects.HealthBar.Visible = false
-                    objects.HealthBarOutline.Visible = false
-                    objects.Weapon.Visible = false
-                    objects.ArmorBar.Visible = false
-                    objects.ArmorBarOutline.Visible = false
-                    objects.PenisLine.Visible = false
                 end
             end
         end
     end
-end
+})
 
--- Function to apply ESP settings
-function applyESP()
-    for _, objects in pairs(ESPObjects) do
-        objects.Box.Visible = getgenv().espEnabled
-        objects.BoxOutline.Visible = getgenv().outlineEnabled and getgenv().espEnabled
+-- Add color picker UI for Chams
+LeftGroupBox:AddLabel('Color'):AddColorPicker('ColorPicker', {
+    Default = Color3.fromRGB(255, 255, 255), -- White color (default)
+    Title = 'Cham Color', -- Title of the color picker
+    Transparency = 0, -- Disables transparency changing for this color picker
+
+    Callback = function(Value)
+        highlightColor = Value  -- Update the highlight color when the user picks a color
+        -- Update the cham color for existing players
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local highlight = player.Character:FindFirstChild("ChamHighlight")
+                if highlight then
+                    highlight.FillColor = highlightColor  -- Apply the new color to the existing highlight
+                end
+            end
+        end
     end
-end
+})
 
--- Player Added/Removed Events
+-- Handle player join to ensure chams are applied
 Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        wait(1)
-        CreateESP(player)
+    player.CharacterAdded:Connect(function(character)
+        -- Wait until the character's root part is available before applying chams
+        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+        if _G.chams and player ~= LocalPlayer then
+            CreateCham(player)  -- Apply cham if enabled and not the local player
+        end
     end)
 end)
 
-Players.PlayerRemoving:Connect(DestroyESP)
-
--- Initialize ESP for existing players
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        CreateESP(player)
-    end
-end
-
--- Update ESP on every frame
-RunService.RenderStepped:Connect(UpdateESP)
-
--- UI for ESP Settings
-local espUI = Tabs.Visuals:AddLeftGroupbox('ESP')
-
-espUI:AddToggle("ESPEnabled", {
-    Text = "Enable",
-    Default = false,
-    Callback = function(value)
-        getgenv().espEnabled = value
-        applyESP()
-    end
-}):AddColorPicker("ESPColor", {
-    Text = "ESP Color",
-    Default = getgenv().espColor,
-    Callback = function(value)
-        getgenv().espColor = value
-        applyESP()
-    end
-})
-
-espUI:AddToggle("name", {
-    Text = "Names",
-    Default = false,
-    Callback = function(value)
-        getgenv().nameESPEnabled = value
-        applyESP()
-    end
-}):AddColorPicker("NameColor", {
-    Text = "Name Color",
-    Default = getgenv().nameColor,
-    Callback = function(value)
-        getgenv().nameColor = value
-        applyESP()
-    end
-})
-
-espUI:AddDropdown("NameDisplayMode", {
-    Text = "Name Mode",
-    Values = {"Username", "DisplayName", "Username (DisplayName)", "Username (DisplayName) [UserID]"},
-    Default = "Username",
-    Callback = function(value)
-        getgenv().nameDisplayMode = value
-        applyESP()
-    end
-})
-
-espUI:AddToggle("HealthBarESP", {
-    Text = "Health Bar",
-    Default = false,
-    Callback = function(value)
-        getgenv().healthBarESP = value
-        applyESP()
-    end
-}):AddColorPicker("HealthBarColor", {
-    Text = "Health Bar Color",
-    Default = getgenv().healthBarColor,
-    Callback = function(value)
-        getgenv().healthBarColor = value
-        applyESP()
-    end
-})
-
-espUI:AddToggle("StudsESPEnabled", {
-    Text = "Distance",
-    Default = false,
-    Callback = function(value)
-        getgenv().studsESPEnabled = value
-        applyESP()
-    end
-}):AddColorPicker("DistanceColor", {
-    Text = "Distance Color",
-    Default = getgenv().distanceColor,
-    Callback = function(value)
-        getgenv().distanceColor = value
-        applyESP()
-    end
-})
-
-espUI:AddToggle("WeaponESPEnabled", {
-    Text = "Weapon ESP",
-    Default = false,
-    Callback = function(value)
-        getgenv().weaponESPEnabled = value
-        applyESP()
-    end
-}):AddColorPicker("WeaponColor", {
-    Text = "Weapon Color",
-    Default = getgenv().weaponColor,
-    Callback = function(value)
-        getgenv().weaponColor = value
-        applyESP()
-    end
-})
-
-espUI:AddToggle("ArmorBarESP", {
-    Text = "Armor Bar",
-    Default = false,
-    Callback = function(value)
-        getgenv().armorBarESP = value
-        applyESP()
-    end
-}):AddColorPicker("ArmorBarColor", {
-    Text = "Armor Bar Color",
-    Default = getgenv().armorBarColor,
-    Callback = function(value)
-        getgenv().armorBarColor = value
-        applyESP()
-    end
-})
-
-espUI:AddToggle("OutlineEnabled", {
-    Text = "Outline",
-    Default = false,
-    Callback = function(value)
-        getgenv().outlineEnabled = value
-        applyESP()
-    end
-})
-
-espUI:AddToggle("PenisESPEnabled", {
-    Text = "Penis ESP",
-    Default = false,
-    Callback = function(value)
-        getgenv().penisESPEnabled = value
-        applyESP()
-    end
-}):AddColorPicker("PenisColor", {
-    Text = "Penis Color",
-    Default = getgenv().penisColor,
-    Callback = function(value)
-        getgenv().penisColor = value
-        applyESP()
-    end
-})
-
-local HudUi = Tabs.Visuals:AddLeftGroupbox('Hud Changer')
-
-local defaultTextHP = " Health "
-local defaultTextArmor = "                   Armor"
-local defaultTextEnergy = "Dark Energy              "
-
-local defaultColorHP = Color3.new(0.941176, 0.031373, 0.819608)
-local defaultColorArmor = Color3.new(0.376471, 0.031373, 0.933333)
-local defaultColorEnergy = Color3.new(0.768627, 0.039216, 0.952941)
-
-local textHP, textArmor, textEnergy = defaultTextHP, defaultTextArmor, defaultTextEnergy
-local colorHP, colorArmor, colorEnergy = defaultColorHP, defaultColorArmor, defaultColorEnergy
-
-local toggleHP, toggleArmor, toggleEnergy = false, false, false
-
-local function skibiditoilet()
-    local player = game.Players.LocalPlayer
-    local playerGui = player:WaitForChild("PlayerGui")
-    local gui = playerGui:WaitForChild("MainScreenGui").Bar
-
-    if toggleHP then
-        gui.HP.TextLabel.Text = textHP
-        gui.HP.bar.BackgroundColor3 = colorHP
-    end
-
-    if toggleArmor then
-        gui.Armor.TextLabel.Text = textArmor
-        gui.Armor.bar.BackgroundColor3 = colorArmor
-    end
-
-    if toggleEnergy then
-        gui.Energy.TextLabel.Text = textEnergy
-        gui.Energy.bar.BackgroundColor3 = colorEnergy
-    end
-end
-
-HudUi:AddToggle('ToggleHP', {
-    Text = 'Customize Health',
-    Default = false,
-    Callback = function(state)
-        toggleHP = state
-        skibiditoilet()
-    end
-}):AddColorPicker('ColorHP', {
-    Text = 'Health Color',
-    Default = defaultColorHP,
-    Callback = function(value)
-        if toggleHP then colorHP = value skibiditoilet() end
-    end
-})
-
-HudUi:AddInput('TextHP', {
-    Text = 'Health Text',
-    Default = defaultTextHP,
-    Callback = function(value)
-        if toggleHP then textHP = value skibiditoilet() end
-    end
-})
-
-HudUi:AddToggle('ToggleArmor', {
-    Text = 'Customize Armor',
-    Default = false,
-    Callback = function(state)
-        toggleArmor = state
-        skibiditoilet()
-    end
-}):AddColorPicker('ColorArmor', {
-    Text = 'Armor Color',
-    Default = defaultColorArmor,
-    Callback = function(value)
-        if toggleArmor then colorArmor = value skibiditoilet() end
-    end
-})
-
-HudUi:AddInput('TextArmor', {
-    Text = 'Armor Text',
-    Default = defaultTextArmor,
-    Callback = function(value)
-        if toggleArmor then textArmor = value skibiditoilet() end
-    end
-})
-
-HudUi:AddToggle('ToggleEnergy', {
-    Text = 'Customize Energy',
-    Default = false,
-    Callback = function(state)
-        toggleEnergy = state
-        skibiditoilet()
-    end
-}):AddColorPicker('ColorEnergy', {
-    Text = 'Energy Color',
-    Default = defaultColorEnergy,
-    Callback = function(value)
-        if toggleEnergy then colorEnergy = value skibiditoilet() end
-    end
-})
-
-HudUi:AddInput('TextEnergy', {
-    Text = 'Energy Text',
-    Default = defaultTextEnergy,
-    Callback = function(value)
-        if toggleEnergy then textEnergy = value skibiditoilet() end
-    end
-})
-
-local player = game.Players.LocalPlayer
-
-player.CharacterAdded:Connect(function()
-    if toggleHP or toggleArmor or toggleEnergy then
-        player:WaitForChild("PlayerGui")
-        skibiditoilet()
+Players.PlayerRemoving:Connect(function(player)
+    -- Remove cham when player leaves
+    if player.Character then
+        local highlight = player.Character:FindFirstChild("ChamHighlight")
+        if highlight then
+            highlight:Destroy()
+        end
     end
 end)
 
-
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-
-local Auras = Tabs.Visuals:AddRightGroupbox("Self")
-utility = utility or {}
-
-local Settings = {
-    Visuals = {
-        SelfESP = {
-            Trail = {
-                Color = Color3.fromRGB(255, 110, 0),
-                Color2 = Color3.fromRGB(255, 0, 0), -- Second color for gradient
-                LifeTime = 1.6,
-                Width = 0.1
-            },
-            Aura = {
-                Color = Color3.fromRGB(152, 0, 252)
-            }
-        }
-    }
-}
-
-utility.trail_character = function(Bool)
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-
-    if Bool then
-        if not humanoidRootPart:FindFirstChild("BlaBla") then
-            local BlaBla = Instance.new("Trail", humanoidRootPart)
-            BlaBla.Name = "BlaBla"
-            humanoidRootPart.Material = Enum.Material.Neon
-
-            local attachment0 = Instance.new("Attachment", humanoidRootPart)
-            attachment0.Position = Vector3.new(0, 1, 0)
-
-            local attachment1 = Instance.new("Attachment", humanoidRootPart)
-            attachment1.Position = Vector3.new(0, -1, 0)
-
-            BlaBla.Attachment0 = attachment0
-            BlaBla.Attachment1 = attachment1
-            BlaBla.Color = ColorSequence.new(Settings.Visuals.SelfESP.Trail.Color, Settings.Visuals.SelfESP.Trail.Color2) -- Gradient effect
-            BlaBla.Lifetime = Settings.Visuals.SelfESP.Trail.LifeTime
-            BlaBla.Transparency = NumberSequence.new(0, 0)
-            BlaBla.LightEmission = 0.2
-            BlaBla.Brightness = 10
-            BlaBla.WidthScale = NumberSequence.new{
-                NumberSequenceKeypoint.new(0, Settings.Visuals.SelfESP.Trail.Width),
-                NumberSequenceKeypoint.new(1, 0)
-            }
+-- Periodically update chams for players when enabled using RunService.Heartbeat
+RunService.Heartbeat:Connect(function()
+    if _G.chams then
+        -- Loop through all players and ensure chams are applied
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                -- Create cham if it doesn't exist for the player
+                local character = player.Character
+                if not character:FindFirstChild("ChamHighlight") then
+                    CreateCham(player)
+                end
+            end
         end
     else
-        for _, child in ipairs(humanoidRootPart:GetChildren()) do
-            if child:IsA("Trail") and child.Name == 'BlaBla' then
-                child:Destroy()
+        -- Disable the cham effect if _G.chams is false
+        for _, player in pairs(Players:GetPlayers()) do
+            local character = player.Character
+            if character then
+                local highlight = character:FindFirstChild("ChamHighlight")
+                if highlight then
+                    highlight:Destroy()
+                end
+            end
+        end
+    end
+end)
+
+-- Ensure chams are applied to players who have respawned
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        -- In case a player respawns
+        if _G.chams and player ~= LocalPlayer then
+            local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+            CreateCham(player)
+        end
+    end)
+end)
+
+-- Execute the toggle when the script is first run
+if _G.chams then
+    -- Enable the cham effect for players (not including local player)
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            CreateCham(player)
+        end
+    end
+else
+    -- Disable the cham effect for all players
+    for _, player in pairs(Players:GetPlayers()) do
+        local character = player.Character
+        if character then
+            local highlight = character:FindFirstChild("ChamHighlight")
+            if highlight then
+                highlight:Destroy()
             end
         end
     end
 end
 
-local function onCharacterAdded(character)
-    if getgenv().trailEnabled then
-        utility.trail_character(true)
-    end
-end
+LeftGroupBox = Tabs.Visuals:AddLeftGroupbox('Name Esp')
 
-player.CharacterAdded:Connect(onCharacterAdded)
-if player.Character then onCharacterAdded(player.Character) end
+Players = game:GetService("Players")
+RunService = game:GetService("RunService")
+Debris = game:GetService("Debris")  -- For cleanup
+LocalPlayer = Players.LocalPlayer
 
-Auras:AddToggle("TrailToggle", {
-    Text = "Trail",
-    Default = false,
-    Callback = function(state)
-        getgenv().trailEnabled = state
-        utility.trail_character(state)
-    end
-}):AddColorPicker("TrailColor", {
-    Text = "Trail Color",
-    Default = Settings.Visuals.SelfESP.Trail.Color,
-    Callback = function(color)
-        Settings.Visuals.SelfESP.Trail.Color = color
-        if getgenv().trailEnabled then
-            utility.trail_character(false)
-            utility.trail_character(true)
-        end
-    end
-}):AddColorPicker("TrailColor2", {
-    Text = "Trail Color 2",
-    Default = Settings.Visuals.SelfESP.Trail.Color2,
-    Callback = function(color)
-        Settings.Visuals.SelfESP.Trail.Color2 = color
-        if getgenv().trailEnabled then
-            utility.trail_character(false)
-            utility.trail_character(true)
-        end
-    end
-})
+displayOption = 'Username'  -- Default display option
+nameTagESPEnabled = false  -- Default for the name tag ESP toggle
 
-Auras:AddSlider("TrailLifetime", {
-    Text = "Trail Lifetime",
-    Default = 1.6,
-    Min = 0.1,
-    Max = 5,
-    Rounding = 1,
-    Callback = function(value)
-        Settings.Visuals.SelfESP.Trail.LifeTime = value
-        if getgenv().trailEnabled then
-            utility.trail_character(false)
-            utility.trail_character(true)
-        end
-    end
-})
+-- Function to create a name tag for a player
+function CreateNameTag(player)
+    -- Skip the local player
+    if player == LocalPlayer then return end
 
-local HitEffectModule = {
-    Locals = {
-        HitEffect = {
-            Type = {}
-        }
-    }
-}
-
-local Attachment = Instance.new("Attachment")
-HitEffectModule.Locals.HitEffect.Type["Skibidi RedRizz"] = Attachment
-local swirl = Instance.new("ParticleEmitter", Attachment)
-swirl.Name = "swirl"
-swirl.Lifetime = NumberRange.new(2)
-swirl.SpreadAngle = Vector2.new(-360, 360)
-swirl.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.5), NumberSequenceKeypoint.new(1, 1)})
-swirl.LightEmission = 10
-swirl.Color = ColorSequence.new(Settings.Visuals.SelfESP.Aura.Color)
-swirl.VelocitySpread = -360
-swirl.Squash = NumberSequence.new(0)
-swirl.Speed = NumberRange.new(0.01)
-swirl.Size = NumberSequence.new(7)
-swirl.ZOffset = -1
-swirl.ShapeInOut = Enum.ParticleEmitterShapeInOut.InAndOut
-swirl.Rate = 40
-swirl.LockedToPart = true
-swirl.Texture = "rbxassetid://10558425570"
-swirl.RotSpeed = NumberRange.new(200)
-swirl.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
-
-local Bolts = Instance.new("ParticleEmitter", Attachment)
-Bolts.Name = "Bolts"
-Bolts.Lifetime = NumberRange.new(0.333)
-Bolts.LockedToPart = true
-Bolts.Transparency = NumberSequence.new({
-    NumberSequenceKeypoint.new(0, 0.88), NumberSequenceKeypoint.new(0.055, 0.98),
-    NumberSequenceKeypoint.new(0.111, 0.17), NumberSequenceKeypoint.new(0.166, 0.39),
-    NumberSequenceKeypoint.new(0.222, 0.12), NumberSequenceKeypoint.new(0.277, 0.92),
-    NumberSequenceKeypoint.new(0.333, 0.41), NumberSequenceKeypoint.new(0.388, 0.21),
-    NumberSequenceKeypoint.new(0.444, 0.78), NumberSequenceKeypoint.new(0.499, 0.23),
-    NumberSequenceKeypoint.new(0.555, 0.78), NumberSequenceKeypoint.new(0.610, 0.81),
-    NumberSequenceKeypoint.new(0.666, 0.91), NumberSequenceKeypoint.new(0.721, 0.87),
-    NumberSequenceKeypoint.new(0.777, 0.41), NumberSequenceKeypoint.new(0.832, 0.30),
-    NumberSequenceKeypoint.new(0.888, 0.16), NumberSequenceKeypoint.new(0.943, 0.39),
-    NumberSequenceKeypoint.new(0.999, 0.70), NumberSequenceKeypoint.new(1, 1)
-})
-Bolts.LightEmission = 1
-Bolts.Color = ColorSequence.new(Settings.Visuals.SelfESP.Aura.Color)
-Bolts.Speed = NumberRange.new(0)
-Bolts.Size = NumberSequence.new(4.8)
-Bolts.Rate = 12
-Bolts.Texture = "rbxassetid://1084955012"
-Bolts.Rotation = NumberRange.new(-180, 180)
-
-local Bubble = Instance.new("ParticleEmitter", Attachment)
-Bubble.Name = "Bubble"
-Bubble.Lifetime = NumberRange.new(1)
-Bubble.LockedToPart = true
-Bubble.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.7), NumberSequenceKeypoint.new(1, 1)})
-Bubble.LightEmission = 1
-Bubble.Color = ColorSequence.new(Settings.Visuals.SelfESP.Aura.Color)
-Bubble.Speed = NumberRange.new(0)
-Bubble.Size = NumberSequence.new(4)
-Bubble.Rate = 6
-Bubble.Texture = "rbxassetid://1084955488"
-Bubble.Rotation = NumberRange.new(-180, 180)
-
-local function applyAura(auraName)
     local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    local head = character:WaitForChild("Head")
 
-    Attachment.Parent = humanoidRootPart
+    -- Create BillboardGui and TextLabel for the name tag
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Parent = character
+    billboardGui.Size = UDim2.new(0, 100, 0, 30)  -- Adjust the size for the name tag
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Adornee = head
+    billboardGui.StudsOffset = Vector3.new(0, 6, 0)  -- Adjust position
 
-    if getgenv().auraEnabled then
-        swirl.Enabled = auraName == "Skibidi RedRizz"
-        Bolts.Enabled = auraName == "Bolts"
-        Bubble.Enabled = auraName == "Bubble"
-        humanoidRootPart.Material = Enum.Material.Neon
+    local nameTag = Instance.new("TextLabel")
+    nameTag.Parent = billboardGui
+    nameTag.Size = UDim2.new(1, 0, 1, 0)  -- Full size of the BillboardGui
+    nameTag.BackgroundTransparency = 1
+    nameTag.TextColor3 = Color3.new(1, 1, 1)  -- White text color
+    nameTag.TextStrokeTransparency = 0.6  -- Adjust outline visibility
+    nameTag.TextStrokeColor3 = Color3.new(0, 0, 0)  -- Black stroke for visibility
+    nameTag.TextSize = 10  -- Smaller base text size
+
+    -- Set the name text based on the selected option
+    if displayOption == "Username" then
+        nameTag.Text = player.Name  -- Display the player's username
     else
-        swirl.Enabled = false
-        Bolts.Enabled = false
-        Bubble.Enabled = false
+        nameTag.Text = player.DisplayName  -- Display the player's display name
+    end
+
+    -- Cleanup when the player leaves
+    Debris:AddItem(billboardGui, 5)  -- Automatically cleanup after 5 seconds
+end
+
+-- Function to remove name tags
+function RemoveNameTags()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            local character = player.Character
+            local billboardGui = character:FindFirstChildOfClass("BillboardGui")
+            if billboardGui then
+                -- Cleanup with Debris service
+                Debris:AddItem(billboardGui, 0)
+            end
+        end
     end
 end
 
-local function onCharacterAdded(character)
-    if getgenv().auraEnabled then
-        applyAura(getgenv().selectedAura or "Skibidi RedRizz")
-    end
-end
-
-player.CharacterAdded:Connect(onCharacterAdded)
-if player.Character then onCharacterAdded(player.Character) end
-
-Auras:AddToggle("AuraToggle", {
-    Text = "Auras",
-    Default = false,
-    Callback = function(state)
-        getgenv().auraEnabled = state
-        applyAura(getgenv().selectedAura or "Skibidi RedRizz")
-    end
-}):AddColorPicker("AuraColor", {
-    Text = "Aura Color",
-    Default = Settings.Visuals.SelfESP.Aura.Color,
-    Callback = function(color)
-        Settings.Visuals.SelfESP.Aura.Color = color
-        swirl.Color = ColorSequence.new(color)
-        Bolts.Color = ColorSequence.new(color)
-        Bubble.Color = ColorSequence.new(color)
-        if getgenv().auraEnabled then
-            applyAura(getgenv().selectedAura or "Skibidi RedRizz")
-        end
-    end
-})
-
-Auras:AddDropdown("AuraType", {
-    Text = "Select Aura",
-    Values = {"Skibidi RedRizz", "Bolts", "Bubble"},
-    Default = "Bubble",
-    Callback = function(selected)
-        getgenv().selectedAura = selected
-        if getgenv().auraEnabled then
-            applyAura(selected)
-        end
-    end
-})
-
-local targetstuffyh = Tabs.Visuals:AddLeftGroupbox('target visuals')
-
-targetstuffyh:AddToggle("TracerToggle", {
-    Text = "Draw Tracer",
-    Default = false,
+-- Add the toggle to enable or disable the Name Tag ESP
+LeftGroupBox:AddToggle('MyToggle', {
+    Text = 'Enable Name Tag ESP',
+    Default = false,  -- Default value (true / false)
+    Tooltip = 'Toggles the name tag ESP visibility.',
     Callback = function(Value)
-        TracerEnabled = Value
-        if not Value then
-            tracer.Visible = false
-        end
-    end
-}):AddColorPicker('HitboxColorPicker', {
-    Text = '',
-    Default = Color3.new(0, 1, 1),
-    Callback = function(color)
-        tracer.Color = color
-    end,
-})
-
-targetstuffyh:AddDropdown("TracerMode", {
-    Text = "Tracer Mode",
-    Values = {"Mouse", "HumanoidRootPart"},
-    Default = "Mouse",
-    Callback = function(Value)
-        targetToMouseTracer = (Value == "Mouse")
-    end
-})
-
-getgenv().envt = Tabs.Visuals:AddRightGroupbox("Environment")
-
-getgenv().Lighting = game:GetService("Lighting")
-
--- Get current game values as defaults
-getgenv().DefaultFogStart = Lighting.FogStart
-getgenv().DefaultFogEnd = Lighting.FogEnd
-getgenv().DefaultFogColor = Lighting.FogColor
-getgenv().DefaultAmbient = Lighting.Ambient
-getgenv().DefaultTechnology = Lighting.Technology.Name
-
-envt:AddToggle('FogToggle', {
-    Text = 'Fog Changer',
-    Default = false,
-
-    Callback = function(Value)
-        if Value then
-            Lighting.FogEnd = getgenv().FogEnd or DefaultFogEnd
-            Lighting.FogStart = getgenv().FogStart or DefaultFogStart
+        nameTagESPEnabled = Value
+        if nameTagESPEnabled then
+            -- Update name tags immediately if ESP is enabled
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    CreateNameTag(player)
+                end
+            end
         else
-            Lighting.FogEnd = DefaultFogEnd
-            Lighting.FogStart = DefaultFogStart
-            Lighting.FogColor = DefaultFogColor
+            -- If ESP is disabled, remove all name tags
+            RemoveNameTags()
         end
     end
-}):AddColorPicker('FogColor', {
-    Default = DefaultFogColor,
-    Title = 'Fog Color',
-
-    Callback = function(Value)
-        Lighting.FogColor = Value
-    end
 })
 
-envt:AddSlider('FogStart', {
-    Text = 'Fog Start',
-    Default = DefaultFogStart,
-    Min = 0,
-    Max = 1000,
-    Rounding = 1,
-
+-- Add the dropdown for selecting between Username or DisplayName
+LeftGroupBox:AddDropdown('NameDisplayOption', {
+    Values = { 'DisplayName', 'Username' },
+    Default = 1,  -- Default to "Username"
+    Multi = false, -- Single selection only
+    Text = 'Name Display Option',
+    Tooltip = 'Choose whether to display the player\'s Username or DisplayName',
     Callback = function(Value)
-        getgenv().FogStart = Value
-        Lighting.FogStart = Value
-    end
-})
-
-envt:AddSlider('FogEnd', {
-    Text = 'Fog End',
-    Default = DefaultFogEnd,
-    Min = 10,
-    Max = 10000,
-    Rounding = 1,
-
-    Callback = function(Value)
-        getgenv().FogEnd = Value
-        Lighting.FogEnd = Value
-    end
-})
-
-envt:AddToggle('AmbientToggle', {
-    Text = 'Ambient',
-    Default = false,
-
-    Callback = function(Value)
-        if Value then
-            Lighting.Ambient = getgenv().AmbientColor or DefaultAmbient
-        else
-            Lighting.Ambient = DefaultAmbient
+        displayOption = Value  -- Update the display option based on dropdown selection
+        if nameTagESPEnabled then
+            -- Reapply name tags immediately when the dropdown value changes
+            RemoveNameTags()  -- Remove existing name tags
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    CreateNameTag(player)
+                end
+            end
         end
     end
-}):AddColorPicker('AmbientColor', {
-    Default = DefaultAmbient,
-    Title = 'Ambient Color',
-
-    Callback = function(Value)
-        getgenv().AmbientColor = Value
-        Lighting.Ambient = Value
-    end
 })
 
-envt:AddDropdown('LightingTech', {
-    Text = 'Technology',
-    Values = {'Voxel', 'Compatibility', 'ShadowMap', 'Future'},
-    Default = table.find({'Voxel', 'Compatibility', 'ShadowMap', 'Future'}, DefaultTechnology) or 1,
-
-    Callback = function(Value)
-        Lighting.Technology = Enum.Technology[Value]
+-- Periodically update name tags every heartbeat (for new players)
+RunService.Heartbeat:Connect(function()
+    if nameTagESPEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and not player.Character:FindFirstChildOfClass("BillboardGui") then
+                CreateNameTag(player)
+            end
+        end
     end
-})
+end)
 
-
-getgenv().walkSpeedEnabled, getgenv().jumpPowerEnabled, getgenv().cframeSpeedEnabled = false, false, false
-getgenv().walkSpeedKeybindActive, getgenv().cframeSpeedKeybindActive = false, false
-getgenv().walkSpeed, getgenv().jumpPower, getgenv().cframeSpeed = 16, 50, 10
+getgenv().cframeSpeedEnabled = false
+getgenv().cframeSpeedKeybindActive = false
+getgenv().cframeSpeed = 10
 
 local uhhh = Tabs.Character:AddLeftGroupbox('Movement')
 
