@@ -369,3 +369,418 @@ local function checkAmmoAndBuy()
         end
     end
 end
+
+getgenv().hitsounds = {
+    ["Bubble"] = "rbxassetid://6534947588",
+    ["Lazer"] = "rbxassetid://130791043",
+    ["Pick"] = "rbxassetid://1347140027",
+    ["Pop"] = "rbxassetid://198598793",
+    ["Rust"] = "rbxassetid://1255040462",
+    ["Sans"] = "rbxassetid://3188795283",
+    ["Fart"] = "rbxassetid://130833677",
+    ["Big"] = "rbxassetid://5332005053",
+    ["Vine"] = "rbxassetid://5332680810",
+    ["UwU"] = "rbxassetid://8679659744",
+    ["Bruh"] = "rbxassetid://4578740568",
+    ["Skeet"] = "rbxassetid://5633695679",
+    ["Neverlose"] = "rbxassetid://6534948092",
+    ["Fatality"] = "rbxassetid://6534947869",
+    ["Bonk"] = "rbxassetid://5766898159",
+    ["Minecraft"] = "rbxassetid://5869422451",
+    ["Gamesense"] = "rbxassetid://4817809188",
+    ["RIFK7"] = "rbxassetid://9102080552",
+    ["Bamboo"] = "rbxassetid://3769434519",
+    ["Crowbar"] = "rbxassetid://546410481",
+    ["Weeb"] = "rbxassetid://6442965016",
+    ["Beep"] = "rbxassetid://8177256015",
+    ["Bambi"] = "rbxassetid://8437203821",
+    ["Stone"] = "rbxassetid://3581383408",
+    ["Old Fatality"] = "rbxassetid://6607142036",
+    ["Click"] = "rbxassetid://8053704437",
+    ["Ding"] = "rbxassetid://7149516994",
+    ["Snow"] = "rbxassetid://6455527632",
+    ["Laser"] = "rbxassetid://7837461331",
+    ["Mario"] = "rbxassetid://2815207981",
+    ["Steve"] = "rbxassetid://4965083997",
+    ["Call of Duty"] = "rbxassetid://5952120301",
+    ["Bat"] = "rbxassetid://3333907347",
+    ["TF2 Critical"] = "rbxassetid://296102734",
+    ["Saber"] = "rbxassetid://8415678813",
+    ["Baimware"] = "rbxassetid://3124331820",
+    ["Osu"] = "rbxassetid://7149255551",
+    ["TF2"] = "rbxassetid://2868331684",
+    ["Slime"] = "rbxassetid://6916371803",
+    ["Among Us"] = "rbxassetid://5700183626",
+    ["One"] = "rbxassetid://7380502345"
+}
+getgenv().selectedHitsound = "Bubble"
+getgenv().hitsoundEnabled = false
+getgenv().hitsoundVolume = 1
+
+function playHitsound()
+    if getgenv().hitsoundEnabled then
+        local sound = Instance.new("Sound")
+        sound.SoundId = getgenv().hitsounds[getgenv().selectedHitsound]
+        sound.Volume = getgenv().hitsoundVolume
+        sound.Parent = workspace
+        sound:Play()
+        sound.Ended:Connect(function()
+            sound:Destroy()
+        end)
+    end
+end
+
+GunMods:AddToggle('hstoggle', {
+    Text = 'Hitsounds',
+    Default = false,
+    Callback = function(state)
+        getgenv().Resolution = {
+    [" "] = 0.65
+}
+
+local Camera = workspace.CurrentCamera
+if getgenv().gg_scripters == nil then
+    game:GetService("RunService").RenderStepped:Connect(
+        function()
+            Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, getgenv().Resolution[" "], 0, 0, 0, 1)
+        end
+    )
+end
+getgenv().gg_scripters = " "
+    end
+})
+
+GunMods:AddDropdown('hs', {
+    Text = 'Select Hitsound',
+    Values = {"Bubble", "Lazer", "Pick", "Pop", "Rust", "Sans", "Fart", "Big", "Vine", "UwU", "Bruh", "Skeet", "Neverlose", "Fatality", "Bonk", "Minecraft", "Gamesense", "RIFK7", "Bamboo", "Crowbar", "Weeb", "Beep", "Bambi", "Stone", "Old Fatality", "Click", "Ding", "Snow", "Laser", "Mario", "Steve", "Call of Duty", "Bat", "TF2 Critical", "Saber", "Baimware", "Osu", "TF2", "Slime", "Among Us", "One"},
+    Default = "Bubble",
+    Callback = function(value)
+        getgenv().selectedHitsound = value
+    end
+})
+
+GunMods:AddSlider('hsvolume', {
+    Text = 'Volume',
+    Default = 1,
+    Min = 1,
+    Max = 5,
+    Rounding = 2,
+    Callback = function(value)
+        getgenv().hitsoundVolume = value
+    end
+})
+
+RunService.RenderStepped:Connect(function()
+    checkAmmoAndBuy()
+
+    if lockedTarget and lockedTarget.Character then
+        local targetPart = lockedTarget.Character:FindFirstChild(targetHitPart)
+        local bodyEffects = lockedTarget.Character:FindFirstChild("BodyEffects")
+        local isKO = bodyEffects and bodyEffects:FindFirstChild("K.O") and bodyEffects["K.O"].Value
+        local isGrabbed = lockedTarget.Character:FindFirstChild("GRABBING_CONSTRAINT")
+
+        if ViewTargetEnabled then
+            workspace.CurrentCamera.CameraSubject = lockedTarget.Character
+        elseif spectateStrafeEnabled and strafeEnabled then
+            workspace.CurrentCamera.CameraSubject = lockedTarget.Character:FindFirstChild("Head")
+        end
+
+        if strafeEnabled and targetPart and not isGrabbed then
+            local targetRoot = lockedTarget.Character:FindFirstChild("HumanoidRootPart")
+            local targetPosition = targetRoot.Position
+
+            if predictMovementEnabled then
+                targetPosition = predictPosition(targetRoot, PredicTvalue)
+            end
+
+            if strafeMode == "Orbit" then
+                local angle = tick() * strafeSpeed
+                local offset = Vector3.new(math.cos(angle) * strafeXOffset, -0.1, math.sin(angle) * strafeXOffset)
+                LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPosition + offset, targetPosition)
+            elseif strafeMode == "Random" then
+                local offset = Vector3.new(math.random(-20, 20), math.random(-10, 10), math.random(-20, 20))
+                local randomrotation = CFrame.Angles(
+                    math.rad(math.random(0, 360)),
+                    math.rad(math.random(0, 360)),
+                    math.rad(math.random(0, 360))
+                )
+                LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPosition + offset) * randomrotation
+            end
+        end
+
+        local humanoid = lockedTarget.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            if not getgenv().lastHealth[lockedTarget.Name] then
+                getgenv().lastHealth[lockedTarget.Name] = humanoid.Health
+            end
+            if humanoid.Health < getgenv().lastHealth[lockedTarget.Name] then
+                playHitsound()
+            end
+            getgenv().lastHealth[lockedTarget.Name] = humanoid.Health
+        end
+
+        if TracerEnabled and targetPart then
+            tracer.Visible = true
+            local camera = workspace.CurrentCamera
+            local targetScreenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+            local endScreenPos
+
+            if targetToMouseTracer then
+                endScreenPos = UserInputService:GetMouseLocation()
+            else
+                local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if rootPart then
+                    local rootScreenPos, rootOnScreen = camera:WorldToViewportPoint(rootPart.Position)
+                    if rootOnScreen then
+                        endScreenPos = Vector2.new(rootScreenPos.X, rootScreenPos.Y)
+                    end
+                end
+            end
+
+            if onScreen and endScreenPos then
+                tracer.From = Vector2.new(targetScreenPos.X, targetScreenPos.Y)
+                tracer.To = endScreenPos
+            else
+                tracer.Visible = false
+            end
+        else
+            tracer.Visible = false
+        end
+
+        local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        local handle = tool and tool:FindFirstChild("Handle")
+        if tool and handle and targetPart and not isKO and not isGrabbed then
+            if hiddenBulletsEnabled then
+                ReplicatedStorage.MainEvent:FireServer(
+                    "ShootGun",
+                    handle,
+                    handle.CFrame.Position - Vector3.new(0, 10, 0),
+                    targetPart.Position - Vector3.new(0, 10, 0),
+                    targetPart,
+                    Vector3.new(0, 0, -1))
+            else
+                ReplicatedStorage.MainEvent:FireServer(
+                    "ShootGun",
+                    handle,
+                    handle.CFrame.Position,
+                    targetPart.Position,
+                    targetPart,
+                    Vector3.new(0, 0, -1))
+            end
+        end
+    else
+        tracer.Visible = false
+    end
+end)
+
+local killSayEnabled = false
+local killSayMessages = {
+    "k3JZ is a free script and u die to it..", 
+    "Must be hard without k3JZ 💔", 
+    "Why aim when k3JZ does it for you?",
+    "Bros not on k3JZ already 😂",
+    "Cant be me icl",
+    "cant win a hvh? maybe try k3JZ",
+    "if u wanna win hop in k3JZ",
+    "hey come on if u cant win get k3JZ",
+    "how to win a hvh? step 1 get k3JZ"
+}
+
+TargetingGroup:AddToggle("killsay", { 
+    Text = "Kill Say", 
+    Default = false,
+    Callback = function(Value)
+        killSayEnabled = Value
+    end
+})
+
+task.spawn(function()
+    while true do
+        if stompTargetEnabled and lockedTarget and lockedTarget ~= LocalPlayer then
+            local character = lockedTarget.Character
+            if character then
+                local bodyEffects = character:FindFirstChild("BodyEffects")
+                local isKO = bodyEffects and bodyEffects:FindFirstChild("K.O") and bodyEffects["K.O"].Value
+                local isSDeath = bodyEffects and bodyEffects:FindFirstChild("SDeath") and bodyEffects["SDeath"].Value
+
+                if isKO and not isSDeath then
+                    local upperTorso = character:FindFirstChild("UpperTorso")
+                    if upperTorso then
+                        local humanoidRootPart = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+                        if not lastPosition then
+                            lastPosition = humanoidRootPart.Position
+                        end
+                        humanoidRootPart.CFrame = CFrame.new(upperTorso.Position + Vector3.new(0, 3, 0))
+                        RunService.RenderStepped:Wait()
+                    end
+                elseif isSDeath and lastPosition then
+                    if killSayEnabled then
+                        local message = killSayMessages[math.random(1, #killSayMessages)]
+                        game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+                    end
+                    local humanoidRootPart = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+                    while (humanoidRootPart.Position - lastPosition).Magnitude > 5 do
+                        humanoidRootPart.CFrame = CFrame.new(lastPosition)
+                        task.wait()
+                    end
+                    lastPosition = nil
+                end
+            else
+                if lastPosition then
+                    local humanoidRootPart = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+                    while (humanoidRootPart.Position - lastPosition).Magnitude > 5 do
+                        humanoidRootPart.CFrame = CFrame.new(lastPosition)
+                        task.wait()
+                    end
+                    lastPosition = nil
+                end
+            end
+            ReplicatedStorage.MainEvent:FireServer("Stomp")
+        end
+        task.wait(0)
+    end
+end)
+
+
+local StarterGui = game:GetService("StarterGui")
+local RapidFireEnabled = false
+local hyperFireEnabled = false
+local modifiedTools = {}
+
+local function rapidfire(tool)
+    if not tool or not tool:FindFirstChild("GunScript") or modifiedTools[tool] then return end
+
+    for _, v in ipairs(getconnections(tool.Activated)) do
+        local funcinfo = debug.getinfo(v.Function)
+        for i = 1, funcinfo.nups do
+            local c, n = debug.getupvalue(v.Function, i)
+            if type(c) == "number" then
+                debug.setupvalue(v.Function, i, 0.0000000000001)
+            end
+        end
+    end
+
+    modifiedTools[tool] = true
+end
+
+local function onCharacterAdded(character)
+    for _, tool in ipairs(character:GetChildren()) do
+        if tool:IsA("Tool") and tool:FindFirstChild("Handle") then
+            rapidfire(tool)
+        end
+    end
+
+    character.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") and child:FindFirstChild("Handle") then
+            rapidfire(child)
+        end
+    end)
+end
+
+if LocalPlayer.Character then
+    onCharacterAdded(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+GunMods:AddToggle("RapidFireToggle", {
+    Text = "Rapid Fire",
+    Default = false,
+    Callback = function(Value)
+        RapidFireEnabled = Value
+        if Value then
+            modifiedTools = {}
+            if LocalPlayer.Character then
+                onCharacterAdded(LocalPlayer.Character)
+            end
+        end
+    end
+})
+
+local function updateHyperFire()
+    for _, obj in ipairs(game:GetDescendants()) do
+        if obj.Name == "ToleranceCooldown" and obj:IsA("ValueBase") then
+            obj.Value = 0 
+        end
+    end
+end
+
+GunMods:AddToggle("HyperFireToggle", {
+    Text = "Rapid Fire v2",
+    Default = false,
+    Callback = function(Value)
+        hyperFireEnabled = Value
+        updateHyperFire()
+    end
+})
+
+game.DescendantAdded:Connect(function(obj)
+    if obj.Name == "ToleranceCooldown" and obj:IsA("ValueBase") then
+        obj.Value = hyperFireEnabled and 0 or 3
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if hyperFireEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+        local character = LocalPlayer.Character
+        if character then
+            local tool = character:FindFirstChildOfClass("Tool")
+            if tool and tool:FindFirstChild("Ammo") then
+                tool:Activate()
+            end
+        end
+    end
+end)
+
+local CamLockBox = Tabs.Main:AddRightGroupbox('Legit')
+
+local camLockEnabled = false
+local camLockTarget = nil
+local smoothness = 0.5
+
+CamLockBox:AddToggle('CamLockToggle', {
+    Text = 'CamLock',
+    Default = false,
+    Callback = function(state)
+        camLockEnabled = state
+        if not state then
+            camLockTarget = nil
+        end
+    end,
+}):AddKeyPicker('CamLockKeybind', {
+    Default = 'Q',
+    Text = 'CamLock',
+    Mode = 'Toggle',
+    Callback = function()
+        if UserInputService:GetFocusedTextBox() then return end
+        if not camLockEnabled then return end
+
+        if camLockTarget then
+            camLockTarget = nil
+        else
+            local closestPlayer = nil
+            local closestDistance = math.huge
+            local mousePos = UserInputService:GetMouseLocation()
+
+            for _, Player in pairs(Players:GetPlayers()) do
+                if Player == LocalPlayer then continue end
+                local character = Player.Character
+                if character then
+                    local HRP = character:FindFirstChild("Head")
+                    if HRP then
+                        local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(HRP.Position)
+                        if onScreen then
+                            local distance = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+                            if distance < closestDistance then
+                                closestDistance = distance
+                                closestPlayer = Player
+                            end
+                        end
+                    end
+                end
+            end
+
+            camLockTarget = closestPlayer
+        end
+    end,
+})
